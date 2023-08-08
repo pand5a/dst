@@ -189,6 +189,17 @@ func (r *FileRestorer) updateImports() error {
 
 	dst.Inspect(r.file, func(n dst.Node) bool {
 		switch n := n.(type) {
+		case *dst.SelectorExpr:
+			x, ok := n.X.(*dst.Ident)
+			if !ok {
+				return true
+			}
+			if x.Name == "" {
+				return true
+			}
+			packagesInUse[x.Name] = true
+			importsRequired[x.Name] = true
+
 		case *dst.Ident:
 			if n.Path == "" {
 				return true
