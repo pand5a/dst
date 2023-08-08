@@ -1,4 +1,4 @@
-module github.com/pand5a/dst
+module github.com/dave/dst
 
 go 1.18
 
