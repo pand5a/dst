@@ -185,6 +185,9 @@ type application struct {
 }
 
 func (a *application) apply(parent dst.Node, name string, iter *iterator, n dst.Node) {
+	if n == nil {
+		return
+	}
 	// convert typed nil into untyped nil
 	if v := reflect.ValueOf(n); v.Kind() == reflect.Ptr && v.IsNil() {
 		n = nil

@@ -1,6 +1,9 @@
 package guess
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 func New() RestorerResolver {
 	return RestorerResolver{}
@@ -22,5 +25,15 @@ func (r RestorerResolver) ResolvePackage(importPath string) (string, error) {
 	if !strings.Contains(importPath, "/") {
 		return importPath, nil
 	}
-	return importPath[strings.LastIndex(importPath, "/")+1:], nil
+
+	newPath := importPath
+
+	ridx := strings.LastIndex(importPath, "/")
+	suffix := importPath[ridx:]
+	ok, _ := regexp.MatchString("^/v[0-9]*$", suffix)
+	if ok {
+		newPath = importPath[:ridx]
+	}
+
+	return newPath[strings.LastIndex(newPath, "/")+1:], nil
 }

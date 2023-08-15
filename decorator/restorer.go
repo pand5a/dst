@@ -127,7 +127,6 @@ func (r *FileRestorer) RestoreFile(file *dst.File) (*ast.File, error) {
 	r.packageNames = map[string]string{}
 	r.comments = []*ast.CommentGroup{}
 	r.cursorAtNewLine = 0
-	r.packageNames = map[string]string{}
 
 	r.base = r.Fset.Base() // base is the pos that the file will start at in the fset
 	r.cursor = token.Pos(r.base)
@@ -164,7 +163,7 @@ func (r *FileRestorer) RestoreFile(file *dst.File) (*ast.File, error) {
 }
 
 func (r *FileRestorer) updateImports() error {
-
+	//return nil
 	if r.Resolver == nil {
 		return nil
 	}
@@ -175,7 +174,7 @@ func (r *FileRestorer) updateImports() error {
 	// hasCgoBlock is only true if the "C" import is on it's own in a block at the start of the
 	// file. If so, this is avoided. If there are no more imports in the file, and a new block is
 	// added, it should be added below this block.
-	var hasCgoBlock bool
+	//var hasCgoBlock bool
 
 	// map of package path -> alias for all packages currently in the imports block(s). Alias can
 	// be an alias, an empty string, "_" or "."
@@ -190,15 +189,6 @@ func (r *FileRestorer) updateImports() error {
 	dst.Inspect(r.file, func(n dst.Node) bool {
 		switch n := n.(type) {
 		case *dst.SelectorExpr:
-			x, ok := n.X.(*dst.Ident)
-			if !ok {
-				return true
-			}
-			if x.Name == "" {
-				return true
-			}
-			packagesInUse[x.Name] = true
-			importsRequired[x.Name] = true
 
 		case *dst.Ident:
 			if n.Path == "" {
@@ -216,10 +206,16 @@ func (r *FileRestorer) updateImports() error {
 			}
 			// if this block has 1 spec and it's the "C" import, ignore it.
 			if len(n.Specs) == 1 && mustUnquote(n.Specs[0].(*dst.ImportSpec).Path.Value) == "C" {
-				hasCgoBlock = true
+				//hasCgoBlock = true
 				return true
 			}
 			blocks = append(blocks, n)
+
+			for _, v := range n.Specs {
+				importSpec := v.(*dst.ImportSpec)
+				importsRequired[mustUnquote(importSpec.Path.Value)] = true
+				packagesInUse[mustUnquote(importSpec.Path.Value)] = true
+			}
 
 		case *dst.ImportSpec:
 			path := mustUnquote(n.Path.Value)
@@ -249,18 +245,18 @@ func (r *FileRestorer) updateImports() error {
 		if a, ok := r.Alias[path]; ok && a == "" {
 			continue
 		}
-		if alias == "_" && packagesInUse[path] {
-			continue
-		}
+		//if alias == "_" && packagesInUse[path] {
+		//	continue
+		//}
 		effectiveAlias[path] = alias
 	}
 	for path, alias := range r.Alias {
 		if alias == "" {
 			continue
 		}
-		if alias == "_" && packagesInUse[path] {
-			continue
-		}
+		//if alias == "_" && packagesInUse[path] {
+		//	continue
+		//}
 		effectiveAlias[path] = alias
 	}
 
@@ -357,54 +353,54 @@ func (r *FileRestorer) updateImports() error {
 		r.packageNames[path], aliases[path] = findAlias(path, alias)
 	}
 
-	// make any additions
-	var added bool
-	for _, path := range importsRequiredOrdered {
-
-		if _, ok := importsFound[path]; ok {
-			continue
-		}
-
-		added = true
-
-		// if there's currently no import blocks, we must create one
-		if len(blocks) == 0 {
-			gd := &dst.GenDecl{
-				Tok: token.IMPORT,
-				// make sure it has an empty line before and after
-				Decs: dst.GenDeclDecorations{
-					NodeDecs: dst.NodeDecs{Before: dst.EmptyLine, After: dst.EmptyLine},
-				},
-			}
-			if hasCgoBlock {
-				// special case for if we have the "C" import
-				r.file.Decls = append([]dst.Decl{r.file.Decls[0], gd}, r.file.Decls[1:]...)
-			} else {
-				r.file.Decls = append([]dst.Decl{gd}, r.file.Decls...)
-			}
-			blocks = append(blocks, gd)
-		}
-
-		is := &dst.ImportSpec{
-			Path: &dst.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("%q", path)},
-		}
-		if aliases[path] != "" {
-			is.Name = &dst.Ident{
-				Name: aliases[path],
-			}
-		}
-		blocks[0].Specs = append(blocks[0].Specs, is)
-	}
-
-	if added {
-		// rearrange import block
-		sort.Slice(blocks[0].Specs, func(i, j int) bool {
-			return packagePathOrderLess(
-				mustUnquote(blocks[0].Specs[i].(*dst.ImportSpec).Path.Value),
-				mustUnquote(blocks[0].Specs[j].(*dst.ImportSpec).Path.Value),
-			)
-		})
-	}
+	//// make any additions
+	//var added bool
+	//for _, path := range importsRequiredOrdered {
+	//
+	//	if _, ok := importsFound[path]; ok {
+	//		continue
+	//	}
+	//
+	//	added = true
+	//
+	//	// if there's currently no import blocks, we must create one
+	//	if len(blocks) == 0 {
+	//		gd := &dst.GenDecl{
+	//			Tok: token.IMPORT,
+	//			// make sure it has an empty line before and after
+	//			Decs: dst.GenDeclDecorations{
+	//				NodeDecs: dst.NodeDecs{Before: dst.EmptyLine, After: dst.EmptyLine},
+	//			},
+	//		}
+	//		if hasCgoBlock {
+	//			// special case for if we have the "C" import
+	//			r.file.Decls = append([]dst.Decl{r.file.Decls[0], gd}, r.file.Decls[1:]...)
+	//		} else {
+	//			r.file.Decls = append([]dst.Decl{gd}, r.file.Decls...)
+	//		}
+	//		blocks = append(blocks, gd)
+	//	}
+	//
+	//	is := &dst.ImportSpec{
+	//		Path: &dst.BasicLit{Kind: token.STRING, Value: fmt.Sprintf("%q", path)},
+	//	}
+	//	if aliases[path] != "" {
+	//		is.Name = &dst.Ident{
+	//			Name: aliases[path],
+	//		}
+	//	}
+	//	blocks[0].Specs = append(blocks[0].Specs, is)
+	//}
+	//
+	//if added {
+	//	// rearrange import block
+	//	sort.Slice(blocks[0].Specs, func(i, j int) bool {
+	//		return packagePathOrderLess(
+	//			mustUnquote(blocks[0].Specs[i].(*dst.ImportSpec).Path.Value),
+	//			mustUnquote(blocks[0].Specs[j].(*dst.ImportSpec).Path.Value),
+	//		)
+	//	})
+	//}
 
 	// import blocks that are empty will be removed from the File Decls list later
 	deleteBlocks := map[dst.Decl]bool{}
@@ -448,34 +444,34 @@ func (r *FileRestorer) updateImports() error {
 		}
 	}
 
-	if added {
-		// imports with a period in the path are assumed to not be standard library packages, so
-		// get a newline separating them from standard library packages. We remove any other
-		// newlines found in this block. We do this after the deletions because the first non-stdlib
-		// import might be deleted.
-		var foundDomainImport bool
-		for _, spec := range blocks[0].Specs {
-			path := mustUnquote(spec.(*dst.ImportSpec).Path.Value)
-			if strings.Contains(path, ".") && !foundDomainImport {
-				// first non-std-lib import -> empty line above
-				spec.Decorations().Before = dst.EmptyLine
-				spec.Decorations().After = dst.NewLine
-				foundDomainImport = true
-				continue
-			}
-			// all other specs, just newlines
-			spec.Decorations().Before = dst.NewLine
-			spec.Decorations().After = dst.NewLine
-		}
-
-		if len(blocks[0].Specs) == 1 {
-			blocks[0].Lparen = false
-			blocks[0].Rparen = false
-		} else {
-			blocks[0].Lparen = true
-			blocks[0].Rparen = true
-		}
-	}
+	//if added {
+	//	// imports with a period in the path are assumed to not be standard library packages, so
+	//	// get a newline separating them from standard library packages. We remove any other
+	//	// newlines found in this block. We do this after the deletions because the first non-stdlib
+	//	// import might be deleted.
+	//	var foundDomainImport bool
+	//	for _, spec := range blocks[0].Specs {
+	//		path := mustUnquote(spec.(*dst.ImportSpec).Path.Value)
+	//		if strings.Contains(path, ".") && !foundDomainImport {
+	//			// first non-std-lib import -> empty line above
+	//			spec.Decorations().Before = dst.EmptyLine
+	//			spec.Decorations().After = dst.NewLine
+	//			foundDomainImport = true
+	//			continue
+	//		}
+	//		// all other specs, just newlines
+	//		spec.Decorations().Before = dst.NewLine
+	//		spec.Decorations().After = dst.NewLine
+	//	}
+	//
+	//	if len(blocks[0].Specs) == 1 {
+	//		blocks[0].Lparen = false
+	//		blocks[0].Rparen = false
+	//	} else {
+	//		blocks[0].Lparen = true
+	//		blocks[0].Rparen = true
+	//	}
+	//}
 
 	// finally remove any deleted blocks from the File Decls list
 	if len(deleteBlocks) > 0 {
@@ -823,6 +819,10 @@ func (r *FileRestorer) restoreScope(s *dst.Scope) *ast.Scope {
 	}
 
 	return out
+}
+
+func MustUnquote(s string) string {
+	return mustUnquote(s)
 }
 
 func mustUnquote(s string) string {

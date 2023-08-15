@@ -125,6 +125,9 @@ func (f *fileDecorator) fragment(node ast.Node) {
 			// we know where the newlines are.
 			line := 1
 			tokenf := f.Fset.File(astf.Pos())
+			if tokenf == nil {
+				panic(f.file.Name)
+			}
 			max := tokenf.Base() + tokenf.Size()
 			for i := tokenf.Base(); i < max; i++ {
 				pos := f.Fset.Position(token.Pos(i))

@@ -74,7 +74,7 @@ func (d *Decorator) ParseFile(filename string, src interface{}, mode parser.Mode
 	// If ParseFile returns an error and also a non-nil file, the errors were just parse errors so
 	// we should continue decorating the file and return the error.
 	f, perr := parser.ParseFile(d.Fset, filename, src, mode|parser.ParseComments)
-	if perr != nil && f == nil {
+	if perr != nil || f == nil {
 		return nil, perr
 	}
 
